@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NAZO SMART CONTROL</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101722;color:#f5f7fa;font-family:Arial,sans-serif}
+header{background:#172638;padding:24px 18px;border-bottom:1px solid #34445a}
+h1{font-size:23px;margin:0 0 7px;color:#65d6bd}
+header p{margin:0;color:#bdc8d5;font-size:13px}
+main{padding:16px;max-width:750px;margin:auto}
+.card{background:#1b293a;border:1px solid #34445a;border-radius:13px;padding:16px;margin-bottom:15px}
+h2{font-size:17px;margin:0 0 14px}
+label{display:block;margin:12px 0 6px;color:#c8d2df;font-size:14px}
+input,select,button{width:100%;padding:12px;border-radius:8px;border:1px solid #53647a;background:#101a28;color:white;font-size:15px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{background:#26364a;border-radius:8px;padding:11px;font-size:14px}
+.item input{width:auto;margin-right:7px}
+button{background:#12a887;border:0;font-weight:bold;margin-top:12px;cursor:pointer}
+.secondary{background:#34445a}
+.result{line-height:1.8;font-size:14px}
+.good{color:#60dfa9}
+.bad{color:#ff8585}
+small{color:#aab8c8}
+</style>
+</head>
+<body>
+<header>
+<h1>NAZO SMART CONTROL</h1>
+<p>Restaurant Daily Staff & Inventory Management</p>
+</header>
+<main>
+<div class="card">
+<h2>📋 Báo cáo đầu ca</h2>
+<label>Tên nhân viên</label>
+<input id="staff" placeholder="Nhập tên nhân viên">
+<label>Ca làm việc</label>
+<select id="shift">
+<option value="Ca 1">Ca 1</option>
+<option value="Ca 2">Ca 2</option>
+</select>
+<label>Ngày báo cáo</label>
+<input type="date" id="date">
+</div>
+
+<div class="card">
+<h2>🥗 Topping</h2>
+<div class="grid" id="toppings"></div>
+</div>
+
+<div class="card">
+<h2>❄️ Nguyên liệu đông lạnh</h2>
+<div class="grid" id="frozen"></div>
+</div>
+
+<div class="card">
+<h2>📊 Kết quả kiểm tra</h2>
+<div id="result" class="result">Chưa có báo cáo. Hãy chọn các nguyên liệu đã gửi hình.</div>
+<button onclick="checkReport()">KIỂM TRA BÁO CÁO</button>
+<button class="secondary" onclick="saveReport()">LƯU BÁO CÁO</button>
+</div>
+
+<div class="card">
+<h2>📚 Lịch sử báo cáo trên thiết bị</h2>
+<div id="history"><small>Chưa có báo cáo.</small></div>
+</div>
+</main>
+
+<script>
+const toppingList=[
+"Hành tây và cà rốt","Cà chua bi","Hành lá","Dưa leo",
+"Salad","Nước củ cải mài và gừng mài","Trứng ngâm tương"
+];
+const frozenList=[
+"Cá thu đao","Tôm ngâm tương","Tôm","Tôm tròn cho mì soba",
+"Tôm và đậu nành cho trứng hấp","Nước trộn mì soba",
+"Cá saba","Bánh xèo","Gà","Bánh pizza"
+];
+
+function createItems(id,list){
+ document.getElementById(id).innerHTML=list.map((name,i)=>
+ `<label class="item"><input type="checkbox" value="${name}" class="check-${id}">${name}</label>`
+ ).join("");
+}
+createItems("toppings",toppingList);
+createItems("frozen",frozenList);
+document.getElementById("date").value=new Date().toISOString().slice(0,10);
+
+function getSelected(){
+ return [...document.querySelectorAll(".check-toppings:checked,.check-frozen:checked")].map(x=>x.value);
+}
+function checkReport(){
+ const selected=getSelected();
+ const missing=[...toppingList,...frozenList].filter(x=>!selected.includes(x));
+ const staff=document.getElementById("staff").value.trim()||"Chưa nhập tên";
+ const shift=document.getElementById("shift").value;
+ document.getElementById("result").innerHTML=
+ `<b>Nhân viên:</b> ${staff}<br><b>Ca:</b> ${shift}<br>
+ <b>Đã xác nhận:</b> <span class="good">${selected.length} nguyên liệu</span><br>
+ <b>Còn thiếu:</b> <span class="bad">${missing.length} nguyên liệu</span><hr>
+ ${missing.length?missing.map(x=>"❌ "+x).join("<br>"):'<span class="good">Đã đủ danh sách!</span>'}
+ <br><small>Lưu ý: Đây là kết quả dựa trên lựa chọn của nhân viên, chưa phải AI tự nhận diện ảnh.</small>`;
+}
+function saveReport(){
+ const selected=getSelected();
+ const missing=[...toppingList,...frozenList].filter(x=>!selected.includes(x));
+ const report={
+ staff:document.getElementById("staff").value||"Chưa nhập tên",
+ shift:document.getElementById("shift").value,
+ date:document.getElementById("date").value,
+ selected,missing
+ };
+ let history=JSON.parse(localStorage.getItem("nazoReports")||"[]");
+ history.unshift(report);
+ localStorage.setItem("nazoReports",JSON.stringify(history));
+ showHistory();
+ checkReport();
+ alert("Đã lưu báo cáo trên thiết bị này!");
+}
+function showHistory(){
+ const history=JSON.parse(localStorage.getItem("nazoReports")||"[]");
+ document.getElementById("history").innerHTML=history.length?
+ history.slice(0,20).map(r=>
+ `<p>📅 ${r.date} | ${r.shift}<br>
+ <b>${r.staff}</b> — Thiếu ${r.missing.length} mục</p><hr>`
+ ).join(""):"<small>Chưa có báo cáo.</small>";
+}
+showHistory();
+</script>
+</body>
+</html>
